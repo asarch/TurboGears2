@@ -1,0 +1,245 @@
+<?xml version="1.0" encoding="utf-8"?>
+<article xmlns="http://docbook.org/ns/docbook" version="5.0" xml:lang="en">
+
+<info>
+<author>
+<firstname>Alef Sheridan Ariel</firstname>
+<surname>Ramírez Chiñas</surname>
+</author>
+<revhistory>
+
+<revision>
+<date>Wed Apr 13 23:20:26 CDT 2016</date>
+<revnumber>1.0</revnumber>
+<revremark>Creación de la guía.</revremark>
+<authorinitials>asarch</authorinitials>
+</revision>
+
+<revision>
+<date>Thu Apr 14 12:14:10 CDT 2016</date>
+<revnumber>2.0</revnumber>
+<revremark>Cambio de la estructura del documento en función a los archivos.</revremark>
+<authorinitials>asarch</authorinitials>
+</revision>
+
+<revision>
+<date>Thu Apr 14 20:55:54 CDT 2016</date>
+<revnumber>3.0</revnumber>
+<revremark>Solución al problema de inicialización.</revremark>
+<authorinitials>asarch</authorinitials>
+</revision>
+
+<revision>
+<date>Mon May 23 10:17:32 CDT 2016</date>
+<revnumber>4.0</revnumber>
+<revremark>Added the step instructions to GitHub server.</revremark>
+<authorinitials>asarch</authorinitials>
+</revision>
+
+</revhistory>
+</info>
+
+<title>Múltiples bases de datos en TurboGears 2</title>
+
+<section>
+<title>Creación e inicialización del proyecto</title>
+
+<para>Creas el proyecto:</para>
+
+<screen><![CDATA[[$] gearbox quickstart agenda
+
+[$] cd agenda]]></screen>
+
+<para>Habilitas la barra de depuración:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[# setup.py
+install_requires = [
+    ...,
+    "tgext.debugbar",
+]]]></programlisting>
+
+<para>Instalas las dependencias:</para>
+
+<screen><![CDATA[[$] pip --verbose install -e .]]></screen>
+
+</section>
+
+<section>
+<title>Configuración de la aplicación</title>
+
+<section>
+<title>development.ini</title>
+
+<para>Cambias el puerto de la aplicación:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[[server:main]
+host = 0.0.0.0
+port = 8080]]></programlisting>
+
+<para>Cambias la llave de la aplicación</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[session.secret = ...
+...
+session.validate_key = ...]]></programlisting>
+
+<para>Habilitas el acceso a la base de datos:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[sqlalchemy.url = sqlite:///%(here)s/devdata.db
+datos.url = postgresql://usuario:password@hostname:port/dbname]]></programlisting>
+</section>
+
+<section>
+<title>agenda/config/app_cfg.py</title>
+
+<para>Reemplazas la configuración de una sola base de datos:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[from agenda.model import init_model
+
+class MultiDBAppConfig(AppConfig):
+    def _setup_sqlalchemy(self, conf):
+        from sqlalchemy import engine_from_config
+
+        engine = engine_from_config(conf, 'sqlalchemy.')
+        conf['tg.app_globals'].sa_engine = engine
+
+        datos_engine = engine_from_config(conf, 'datos.')
+        conf['tg.app_globals'].datos_engine = datos_engine
+
+        init_model(engine, datos_engine)
+
+base_config = MultiDBAppConfig()]]></programlisting>
+
+<para>Cambias la llave:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[# YOU MUST CHANGE THIS VALUE IN PRODUCTION TO SECURE YOUR APP
+base_config.sa_auth.cookie_secret = "..."]]></programlisting>
+</section>
+
+<section>
+<title>agenda/model/__init__.py</title>
+
+<para>Creamos los objetos de sesión de la nueva base de datos:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[# Global metadata.
+# If you have multiple databases with overlapping table names, you'll need a
+# metadata for each database. Feel free to rename 'metadata2'.
+# from sqlalchemy import MetaData
+# metadata2 = MetaData()
+
+# Aqui colocamos la configuracion para la nueva base de datos
+datos_maker = sessionmaker(autoflush=True, autocommit=False,
+    extension=ZopeTransactionExtension())
+
+datosDBSession = scoped_session(datos_maker)
+
+datosDeclarativeBase = declarative_base()
+
+datos_metadata = datosDeclarativeBase.metadata
+
+#def init_model(engine):
+def init_model(engine, datos_engine):
+    DBSession.configure(bind=engine)
+    metadata.bind = engine
+
+    datosDBSession.configure(bind=datos_engine)
+    datos_metadata.bind = datos_engine]]></programlisting>
+
+<para>Importamos las tablas de la aplicación:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[# Import your model modules here
+from agenda.model.auth import User, Group, Permission
+
+from agenda.model import tablas]]></programlisting>
+</section>
+
+<section>
+<title>agenda/model/tablas.py</title>
+
+<para>Creamos los modelos para la base de datos nueva:</para>
+
+<screen><![CDATA[[$] sqlacodegen postgresql://user:password@hostname:port/dbname | sed 's/    /\t/g' >
+agenda/model/tablas.py]]></screen>
+
+<para>Preparamos el modelo para usar el esquema de la aplicación:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[# coding: utf-8
+from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, Text, text
+from sqlalchemy.orm import relationship
+#from sqlalchemy.ext.declarative import declarative_base
+
+#Base = declarative_base()
+#metadata = Base.metadata
+
+from agenda.model import datosDeclarativeBase
+from agenda.model import datos_metadata
+from agenda.model import datosDBSession
+
+#class Aniversario(Base):
+class Aniversario(datosDeclarativeBase):
+    __tablename__ = 'aniversario'
+    ...]]></programlisting>
+</section>
+
+<section>
+<title>agenda/websetup/schema.py</title>
+
+<para>Si la base de datos es nueva y no contiene ninguna tabla, puedes crearlos durante el bootstrap:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[def setup_schema(command, conf, vars):
+    ...
+    print("Creating tables")
+    model.metadatata.create_all(bind=config['tg.app_globals'].sa_engine
+    model.datos_metadata.create_all(bind=config['tg.app_globals'].datos_engine)]]></programlisting>
+</section>
+
+<section>
+<title>agenda/websetup/bootstrap.py</title>
+
+<para>Si deseas agregar algún nuevo dato en la base de datos:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[def bootstrap(command, conf, vars):
+    try:
+        ...
+        aniversario = agenda.model.tablas.Aniversario()
+        aniversario.nombre = "..."
+        aniversario.descripcion = "..."
+        aniversario.dia = 12
+        aniversario.mes = 'abril'
+        aniversario.tipo_aniversar = 1
+
+        model.agendaDBSession.add(aniversario)
+        model.agendaDBSession.flush()]]></programlisting>
+</section>
+
+<section>
+<title>agenda/controllers/root.py</title>
+
+<para>Habilitas el módulo de administración:</para>
+
+<programlisting linenumbering="numbered" language="perl"><![CDATA[from agenda.model import datosDBSession
+from agenda.model import tablas
+
+class RootController(BaseController):
+    admin = AdminController(model, DBSession, config_type=TGAdminConfig)
+    ...
+    agenda = AdminController(tablas, agendaDBSession, config_type=TGAdminConfig)]]></programlisting>
+
+</section>
+</section>
+
+<section>
+<title>Inicialización</title>
+
+<para>Inicializamos la base de datos interna de la aplicación:</para>
+
+<screen><![CDATA[[$] gearbox --verbose setup-app]]></screen>
+</section>
+
+<section>
+<title>Ejecución</title>
+
+<para>Iniciamos el servidor:</para>
+
+<screen><![CDATA[[$] gearbox --verbose serve --reload --debug]]></screen>
+</section>
+</article>
