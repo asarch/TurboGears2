@@ -52,7 +52,7 @@
 
 <para>Habilitas la barra de depuración:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[# setup.py
+<programlisting linenumbering="numbered" language="python"><![CDATA[# setup.py
 install_requires = [
     ...,
     "tgext.debugbar",
@@ -72,19 +72,19 @@ install_requires = [
 
 <para>Cambias el puerto de la aplicación:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[[server:main]
+<programlisting linenumbering="numbered" language="python"><![CDATA[[server:main]
 host = 0.0.0.0
 port = 8080]]></programlisting>
 
 <para>Cambias la llave de la aplicación</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[session.secret = ...
+<programlisting linenumbering="numbered" language="python"><![CDATA[session.secret = ...
 ...
 session.validate_key = ...]]></programlisting>
 
 <para>Habilitas el acceso a la base de datos:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[sqlalchemy.url = sqlite:///%(here)s/devdata.db
+<programlisting linenumbering="numbered" language="python"><![CDATA[sqlalchemy.url = sqlite:///%(here)s/devdata.db
 datos.url = postgresql://usuario:password@hostname:port/dbname]]></programlisting>
 </section>
 
@@ -93,7 +93,7 @@ datos.url = postgresql://usuario:password@hostname:port/dbname]]></programlistin
 
 <para>Reemplazas la configuración de una sola base de datos:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[from agenda.model import init_model
+<programlisting linenumbering="numbered" language="python"><![CDATA[from agenda.model import init_model
 
 class MultiDBAppConfig(AppConfig):
     def _setup_sqlalchemy(self, conf):
@@ -111,7 +111,7 @@ base_config = MultiDBAppConfig()]]></programlisting>
 
 <para>Cambias la llave:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[# YOU MUST CHANGE THIS VALUE IN PRODUCTION TO SECURE YOUR APP
+<programlisting linenumbering="numbered" language="python"><![CDATA[# YOU MUST CHANGE THIS VALUE IN PRODUCTION TO SECURE YOUR APP
 base_config.sa_auth.cookie_secret = "..."]]></programlisting>
 </section>
 
@@ -120,7 +120,7 @@ base_config.sa_auth.cookie_secret = "..."]]></programlisting>
 
 <para>Creamos los objetos de sesión de la nueva base de datos:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[# Global metadata.
+<programlisting linenumbering="numbered" language="python"><![CDATA[# Global metadata.
 # If you have multiple databases with overlapping table names, you'll need a
 # metadata for each database. Feel free to rename 'metadata2'.
 # from sqlalchemy import MetaData
@@ -146,7 +146,7 @@ def init_model(engine, datos_engine):
 
 <para>Importamos las tablas de la aplicación:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[# Import your model modules here
+<programlisting linenumbering="numbered" language="python"><![CDATA[# Import your model modules here
 from agenda.model.auth import User, Group, Permission
 
 from agenda.model import tablas]]></programlisting>
@@ -162,7 +162,7 @@ agenda/model/tablas.py]]></screen>
 
 <para>Preparamos el modelo para usar el esquema de la aplicación:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[# coding: utf-8
+<programlisting linenumbering="numbered" language="python"><![CDATA[# coding: utf-8
 from sqlalchemy import Boolean, Column, DateTime, Enum, ForeignKey, Integer, Text, text
 from sqlalchemy.orm import relationship
 #from sqlalchemy.ext.declarative import declarative_base
@@ -185,7 +185,7 @@ class Aniversario(datosDeclarativeBase):
 
 <para>Si la base de datos es nueva y no contiene ninguna tabla, puedes crearlos durante el bootstrap:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[def setup_schema(command, conf, vars):
+<programlisting linenumbering="numbered" language="python"><![CDATA[def setup_schema(command, conf, vars):
     ...
     print("Creating tables")
     model.metadatata.create_all(bind=config['tg.app_globals'].sa_engine
@@ -197,7 +197,7 @@ class Aniversario(datosDeclarativeBase):
 
 <para>Si deseas agregar algún nuevo dato en la base de datos:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[def bootstrap(command, conf, vars):
+<programlisting linenumbering="numbered" language="python"><![CDATA[def bootstrap(command, conf, vars):
     try:
         ...
         aniversario = agenda.model.tablas.Aniversario()
@@ -205,7 +205,7 @@ class Aniversario(datosDeclarativeBase):
         aniversario.descripcion = "..."
         aniversario.dia = 12
         aniversario.mes = 'abril'
-        aniversario.tipo_aniversar = 1
+        aniversario.tipo_aniversario = 1
 
         model.agendaDBSession.add(aniversario)
         model.agendaDBSession.flush()]]></programlisting>
@@ -216,7 +216,7 @@ class Aniversario(datosDeclarativeBase):
 
 <para>Habilitas el módulo de administración:</para>
 
-<programlisting linenumbering="numbered" language="perl"><![CDATA[from agenda.model import datosDBSession
+<programlisting linenumbering="numbered" language="python"><![CDATA[from agenda.model import datosDBSession
 from agenda.model import tablas
 
 class RootController(BaseController):
